@@ -1,22 +1,15 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
 # Green-2 XOR Red-3 //300 .. 298
 # Cr
 # 3.13
-#
-#
-import copy
 
+import copy
+import random
 import numpy as np
 from skimage.io import imsave, imshow, show, imread
 from matplotlib import pyplot as plt
-import math
 
 var = 22
-delta = (4 + 4*var) % 3
+delta = 4 + 4*(var % 3)
 
 
 def print_hi(name):
@@ -28,9 +21,9 @@ def get_level(img, level):
     return (img & (2**(level-1)))
 
 
-def getW(img, chanals, levels):  # возможно параметр ключа (r3 xor g2)
+def getW(img, chanals, levels):
     arr = []
-    for i in range(0,len(chanals), 1):
+    for i in range(0, len(chanals), 1):
         if chanals[i] == 'r':
             red = (get_level(img[:, :, 0], levels[i]) >> (levels[i] - 1))
             arr.append(red)
@@ -48,8 +41,79 @@ def getCr(img):
     Green_chanal = img[:, :, 1] / 255
     Blue_chanal = img[:, :, 2] / 255
     y = (77 * Red_chanal + 150 * Green_chanal + 29 * Blue_chanal) / 256
-    Cr = (255 * (Red_chanal - y)).astype(int)
-    return Cr, (255*y).astype(int)
+    y = (255*y).astype(int)
+    Cr = img[:, :, 0] - y
+    return Cr, y
+
+
+def border_processing_function(element_value):
+    if element_value > 255:
+        return 255
+    elif element_value < 0:
+        return 0
+    else:
+        return element_value
+
+
+def border_processing(img):
+    vector_img = np.vectorize(border_processing_function)
+    new_img = vector_img(img)
+    return new_img
+
+
+def textIntoImg(text, img, p, seed):
+    binText = ''.join(format(x, '08b') for x in bytearray(text, 'utf-8'))
+    binl = f'{len(binText):b}'
+    while len(binl) < 32:
+        binl = '0' + binl
+    binData = binl + binText
+
+    a = np.arange(0, len(img)**2, 1)
+    random.shuffle(a, random.seed(seed))
+    textImg = np.zeros(np.shape(img)).astype(int)
+    loc = calcPosition(a)
+    for i in range(0, len(binData)):
+        textImg[loc[0][i], loc[1][i]] = int(binData[i])
+    img = (img & (255-2**(p-1))) | (textImg << (p-1))
+    return img, textImg
+
+
+def bits2char(arr):
+    intVal = 0
+    for i in range(-len(arr), 0, 1):
+        intVal += (2**(abs(i)-1))*int(arr[i])
+    return chr(intVal)
+
+
+def getTextFromImg(img, p, seed):
+    imgW = ((img & (2 ** (p - 1))) >> (p - 1)).astype(int)
+    w = ''
+    a = np.arange(0, len(img) ** 2, 1)
+    random.shuffle(a, random.seed(seed))
+    loc = calcPosition(a)
+    size = 0
+    for i in range(0, 32):
+        if imgW[loc[0][i], loc[1][i]] == 1:
+            size += 2 ** (31 - i)
+    for i in range(32, size+32):
+        w += str(imgW[loc[0][i], loc[1][i]])
+    w = np.reshape(list(w), (int(len(w) / 8), 8)).astype(int)
+    text = ''
+    for row in w:
+        text += bits2char(row)
+    return text
+
+
+def calcPositionFunction(n):
+    j = n % 512
+    i = (n - j)/512
+    return int(i), int(j)
+
+
+def calcPosition(arr):
+    vector = np.vectorize(calcPositionFunction)
+    vectorPositions = vector(arr)
+    return vectorPositions
 
 
 # Press the green button in the gutter to run the script.
@@ -60,7 +124,9 @@ if __name__ == '__main__':
     W2 = (imread("C:/Users/Никита/Desktop/стенография/ornament.tif") / 255).astype(int)
     CW = copy.copy(C)
     CW2 = copy.copy(C)
+    C2 = imread("C:/Users/Никита/Desktop/стенография/goldhill.tif")
 
+    print(delta)
     # task1
     # нужные каналы
     Green_chanal = C[:, :, 1]
@@ -73,15 +139,20 @@ if __name__ == '__main__':
     red3 = get_level(Red_chanal, redLvl)
 
     # картинка на замену одной из плоскостей
-    G2xorW = (green2 >> (greenLvl-1)) ^ W  # возможно надо еще один хоr с red3
+    G2xorR3 = (green2 >> (greenLvl-1)) ^ (red3 >> (redLvl-1))  # C
+    G2xorR3xorW = (green2 >> (greenLvl-1)) ^ (red3 >> (redLvl-1)) ^ W
 
     # встраивание
     mask = 255 - 2**(redLvl - 1)
-    CW[:, :, 0] = ((CW[:, :, 0] & mask) | (G2xorW << (redLvl - 1)))  # для наглядности встраивания поменять сдвиг
+    # замена плоскости
+    # CW[:, :, 0] = ((CW[:, :, 0] & mask) | (G2xorR3xorW << (redLvl - 1)))  # для наглядности встраивания поменять сдвиг
+    # xor с плоскостью
+    CW[:, :, 0] = (CW[:, :, 0] & mask) | ((red3 >> (redLvl-1)) ^ W) << (redLvl-1)
 
     # task2
     # извлечение
     resW1 = getW(CW, ['g', 'r'], [greenLvl, redLvl])
+    resW1 = resW1 ^ G2xorR3
 
     fig = plt.figure(figsize=(20, 10))
     fig.add_subplot(2, 3, 1)
@@ -95,15 +166,15 @@ if __name__ == '__main__':
     fig.add_subplot(2, 3, 5)
     imshow(resW1)
     fig.add_subplot(2, 3, 6)
-    imshow(G2xorW)
-    show()
+    imshow(G2xorR3xorW)
 
     # task3
     Cr, y = getCr(C)
     v = Cr % delta
-    CrW = np.floor(Cr / (2 * delta)) * 2 * delta + W * delta + v
+    CrW = np.floor(Cr / (2 * delta)) * 2 * delta + W * delta + v  # 140
 
-    CW2[:, :, 0] = CrW + y
+    tmp = border_processing(CrW + y)
+    CW2[:, :, 0] = tmp
 
     # task4
     # CrW = CW2 - y
@@ -122,22 +193,25 @@ if __name__ == '__main__':
     imshow(resW2)
     fig.add_subplot(2, 3, 6)
     imshow(CrW)
-    show()
 
     # external1
+    # G2xorR3v2 = ((CW[:, :, 1] & (2 ** (greenLvl - 1))) >> (greenLvl - 1)) ^ (
+    #             (CW[:, :, 0] & (2 ** (redLvl - 1))) >> (redLvl - 1))
+    copyCW = copy.copy(CW)
     ex_Cr, ex_y = getCr(CW)
     v = ex_Cr % delta
     ex_CrW = np.floor(ex_Cr / (2 * delta)) * 2 * delta + W2 * delta + v
 
-    CW[:, :, 0] = ex_CrW + ex_y
+    tmp = border_processing(ex_CrW + ex_y)
+    CW[:, :, 0] = tmp
 
-    # resW1 = getW(CW, ['g', 'r'], [greenLvl, redLvl])
     resW3 = np.floor(ex_CrW / delta) % 2
     resW4 = getW(CW, ['g', 'r'], [greenLvl, redLvl])
+    resW4 = resW4 ^ G2xorR3
 
     fig = plt.figure(figsize=(20, 10))
     fig.add_subplot(3, 3, 1)
-    imshow(C)
+    imshow(copyCW)
     fig.add_subplot(3, 3, 2)
     imshow(W)
     fig.add_subplot(3, 3, 3)
@@ -149,10 +223,9 @@ if __name__ == '__main__':
     fig.add_subplot(3, 3, 6)
     imshow(resW3)
     fig.add_subplot(3, 3, 8)
-    imshow(G2xorW)
-    show()
+    imshow(G2xorR3)
 
-    # external2
+    # СВИ-4: извлечение не зная С
     resW4 = np.floor(CrW / delta) % 2
 
     fig = plt.figure(figsize=(20, 10))
@@ -160,8 +233,33 @@ if __name__ == '__main__':
     imshow(W)
     fig.add_subplot(2, 1, 2)
     imshow(resW4)
-    show()
 
+    # external2
+    text = "Look, I was gonna go easy on you not to hurt your feelings.\"\n" \
+           "\"But I'm only going to get this one chance.\"\n" \
+           "\"Something's wrong, I can feel it.\"\n" \
+           "Six minutes. Six Minutes. Six minutes, Slim Shady, you're on!\n" \
+           "\"Just a feeling I've got. Like something's about to happen,\n" \
+           "but I don't know what.\n" \
+           "If that means what I think it means, we're in trouble,\n" \
+           "big trouble; and if he is as bananas as you say,\n" \
+           "I'm not taking any chances.\"\n" \
+           "\"You are just what the doc ordered.\""
+    seed = 1
+    p = 1
+    CWbin, textImg = textIntoImg(text, copy.copy(C2), p, seed)
+
+    newText = getTextFromImg(CWbin, p, seed)
+    print(newText)
+
+    fig = plt.figure(figsize=(20, 10))
+    fig.add_subplot(2, 2, 1)
+    imshow(C2)
+    fig.add_subplot(2, 2, 2)
+    imshow(textImg)
+    fig.add_subplot(2, 2, 3)
+    imshow(CWbin, cmap='gray', vmin=C2.min(), vmax=C2.max())
+    show()
 
 
     # QIM

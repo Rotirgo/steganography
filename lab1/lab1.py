@@ -115,16 +115,71 @@ def calcPosition(arr):
     vectorPositions = vector(arr)
     return vectorPositions
 
+# practice
+def lsb_embeded(C, b, seed):
+    size = np.shape(C)
+    CW = np.reshape(copy.copy(C), (size[0]*size[1],))
+    print(CW)
+    test = np.zeros(size).astype(int)
+    test = np.reshape(test, (size[0] * size[1],))
+
+    if (seed < 0):
+        a = np.arange(0, len(b), 1)
+        for n in a:
+            CW[n] = (CW[n] & 254) | b[n]
+            test[n] = (test[n] & 254) | b[n]
+    else:
+        a = np.arange(0, len(CW), 1)
+        random.shuffle(a, random.seed(seed))
+        for n in range(0, len(b)):
+            print(a[n], a[n]//size[0], a[n]%size[1])
+            CW[a[n]] = (CW[a[n]] & 254) | b[n]
+            test[a[n]] = (CW[a[n]] & 254) | b[n]
+    print(CW)
+    print(test)
+    CW = np.reshape(CW, size)
+    test = np.reshape(test, size)
+
+    fig = plt.figure(figsize=(20, 10))
+    fig.add_subplot(2, 2, 1)
+    imshow(C)
+    fig.add_subplot(2, 2, 2)
+    imshow(test)
+    fig.add_subplot(2, 2, 3)
+    imshow(CW)
+    show()
+    return CW
+
+
+def lsb_extract(CW, Nb, seed):
+    size = np.shape(CW)
+    C = np.reshape(copy.copy(CW), (size[0]*size[1],))
+    bits = []
+    if (seed < 0):
+        a = np.arange(0, Nb, 1)
+        for n in a:
+            bits.append(C[n]%2)
+    else:
+        a = np.arange(0, len(C), 1)
+        random.shuffle(a, random.seed(seed))
+        print(a)
+        for n in range(0, Nb):
+            print(a[n], C[a[n]])
+            bits.append(C[a[n]]%2)
+    print(bits)
+    return bits
+# end practice
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
-    C = imread("C:/Users/Никита/Desktop/стенография/baboon.tif")
-    W = (imread("C:/Users/Никита/Desktop/стенография/mickey.tif") / 255).astype(int)
-    W2 = (imread("C:/Users/Никита/Desktop/стенография/ornament.tif") / 255).astype(int)
+    print_hi('PyCharm!')
+    C = imread("C:/Users/Никита/Desktop/стеганография/лаба1\\baboon.tif")
+    W = (imread("C:/Users/Никита/Desktop/стеганография/лаба1\\mickey.tif") / 255).astype(int)
+    W2 = (imread("C:/Users/Никита/Desktop/стеганография/лаба1\\ornament.tif") / 255).astype(int)
     CW = copy.copy(C)
     CW2 = copy.copy(C)
-    C2 = imread("C:/Users/Никита/Desktop/стенография/goldhill.tif")
+    C2 = imread("C:/Users/Никита/Desktop/стеганография/лаба1\\goldhill.tif")
 
     print(delta)
     # task1
@@ -266,6 +321,15 @@ if __name__ == '__main__':
     # при извлечении нужно CW поделить на дельту -> побочное слагаемое будет меньше 1, а второе слагаемое это W
     # затем берем по модулю 2 ->  избавились от первого слагаемого -> осталось W бинарное и побочка меньше 1
     # округляем вниз(целая часть), тогда исчезнет побочка
+
+
+    # практика 1
+    # seed = 1
+    # b = [1, 0, 0, 1, 1, 0, 1, 0, 1, 0]
+    # img = lsb_embeded(C2, b, seed)
+    # bits = lsb_extract(img, len(b), seed)
+    # np.set_printoptions(threshold=np.nan)
+    # print(bits)
 
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

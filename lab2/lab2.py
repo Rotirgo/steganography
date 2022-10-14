@@ -4,13 +4,26 @@ import numpy as np
 from skimage.io import imsave, imshow, show, imread
 from matplotlib import pyplot as plt
 
-decompositionLvl = 4
+decompositionLvl = 3
 area = 1/4
 
 def generateW(size, seed):
     rng = np.random.default_rng(seed=seed)
-    W = rng.random(size)
-    return W
+    w = rng.random(size)
+    return w
+
+
+def insertW(f, Lvl, w):
+    sizef = np.shape(f)
+    partf = f[sizef[0]//(2**Lvl):sizef[0]//(2**(Lvl-1)), 0:sizef[1]//(2**Lvl)]
+    sizePartf = np.shape(partf)
+    fmean = np.mean(partf)
+    smallfw = copy.copy(partf)
+    for i in range(0, len(w)):
+        smallfw[i//sizePartf[0], i%sizePartf[0]] = fmean + (partf[i//sizePartf[0], i%sizePartf[0]] - fmean)*(1+0.5*w[i])
+    fw = copy.copy(f)
+    fw[sizef[0]//(2**Lvl):sizef[0]//(2**(Lvl-1)), 0:sizef[1]//(2**Lvl)] = smallfw
+    return fw
 
 
 def VeyvletHaara(img):
@@ -102,34 +115,38 @@ def linary(img, fmin, fmax):
 
 if __name__ == '__main__':
     C = imread("C:/Users/Никита/Desktop/стеганография/лаба2/bridge.tif")
+    #1
     sizeC = np.shape(C)
-    #test = imread("C:/Users/Никита/Desktop/стеганография/лаба2/bridge.tif")
-    seed = random.seed(1)
     n = int(area*(sizeC[0]//(2**decompositionLvl))*(sizeC[1]//(2**decompositionLvl)))
     W = generateW(n, 1)
-    print(W)
 
+    #2
     F = DVTwithLvlDecomposition(C, decompositionLvl)  # получили спектр
-    # встроили знак в спектр
-    CW = invDVTwithLvlDecomposition(F, decompositionLvl)  # получили изображение со встроенным знаком
+    #3
+    Fw = insertW(F, decompositionLvl, W)  # встроили знак в спектр
+    #4
+    CW = invDVTwithLvlDecomposition(Fw, decompositionLvl)  # получили изображение со встроенным знаком
+    #5
+    Fcw = DVTwithLvlDecomposition(CW, decompositionLvl)
 
     # вывод изображений
-    contrastF = contrastF(F, decompositionLvl)
+    viewF = contrastF(F, decompositionLvl)
     fig = plt.figure(figsize=(20, 10))
     fig.add_subplot(1, 2, 1)
     imshow(C)
     # imshow(F, cmap="gray")  # , vmin=0
     fig.add_subplot(1, 2, 2)
-    imshow(contrastF, cmap="gray")
+    imshow(viewF, cmap="gray")
 
-
-
-
-
-    fig1 = plt.figure(figsize=(20, 10))
-    fig1.add_subplot(1, 2, 1)
-    imshow(C)
-    fig1.add_subplot(1, 2, 2)
+    fig2 = plt.figure(figsize=(20, 10))
+    fig2.add_subplot(1, 2, 1)
+    imshow(C.astype(float), cmap="gray")
+    fig2.add_subplot(1, 2, 2)
     imshow(CW, cmap="gray")
+    fig3 = plt.figure(figsize=(20, 10))
+    fig3.add_subplot(1, 2, 1)
+    imshow((C - CW), cmap="gray")
+    fig3.add_subplot(1, 2, 2)
+    imshow((Fw-Fcw), cmap="gray")
     print(np.sum(np.square(C-CW)))
     show()

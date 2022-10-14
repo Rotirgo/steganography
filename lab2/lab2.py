@@ -128,13 +128,20 @@ if __name__ == '__main__':
     CW = invDVTwithLvlDecomposition(Fw, decompositionLvl)  # получили изображение со встроенным знаком
     #5
     Fcw = DVTwithLvlDecomposition(CW, decompositionLvl)
+    #6
+
+    #7
+
+    #8
+
+
+
 
     # вывод изображений
     viewF = contrastF(F, decompositionLvl)
     fig = plt.figure(figsize=(20, 10))
     fig.add_subplot(1, 2, 1)
     imshow(C)
-    # imshow(F, cmap="gray")  # , vmin=0
     fig.add_subplot(1, 2, 2)
     imshow(viewF, cmap="gray")
 
@@ -143,6 +150,7 @@ if __name__ == '__main__':
     imshow(C.astype(float), cmap="gray")
     fig2.add_subplot(1, 2, 2)
     imshow(CW, cmap="gray")
+
     fig3 = plt.figure(figsize=(20, 10))
     fig3.add_subplot(1, 2, 1)
     imshow((C - CW), cmap="gray")

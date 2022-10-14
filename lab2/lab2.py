@@ -5,6 +5,12 @@ from skimage.io import imsave, imshow, show, imread
 from matplotlib import pyplot as plt
 
 decompositionLvl = 4
+area = 1/4
+
+def generateW(size, seed):
+    np.random.seed = seed
+    W = np.random.random(size)
+    return W
 
 
 def VeyvletHaara(img):
@@ -51,7 +57,7 @@ def DVTwithLvlDecomposition(img, decompositionLvl):
 
 def invDVTwithLvlDecomposition(img, Lvl):
     size = np.shape(img)
-    ResF = copy.copy(img)  #.astype(float)
+    ResF = copy.copy(img)
     for i in range(0, Lvl):
         partF = ResF[0:size[0] // (2 ** (Lvl - i - 1)), 0:size[1] // (2 ** (Lvl - i - 1))]
         ResF[0:size[0] // (2 ** (Lvl - i - 1)), 0:size[1] // (2 ** (Lvl - i - 1))] = invVeyvletHaara(partF)
@@ -96,7 +102,11 @@ def linary(img, fmin, fmax):
 
 if __name__ == '__main__':
     C = imread("C:/Users/Никита/Desktop/стеганография/лаба2/bridge.tif")
+    sizeC = np.shape(C)
     #test = imread("C:/Users/Никита/Desktop/стеганография/лаба2/bridge.tif")
+    seed = random.seed(1)
+    n = int(area*(sizeC[0]//(2**decompositionLvl))*(sizeC[1]//(2**decompositionLvl)))
+    W = generateW(n, 1)
 
     F = DVTwithLvlDecomposition(C, decompositionLvl)  # получили спектр
     # встроили знак в спектр

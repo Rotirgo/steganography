@@ -8,8 +8,8 @@ decompositionLvl = 4
 area = 1/4
 
 def generateW(size, seed):
-    np.random.seed = seed
-    W = np.random.random(size)
+    rng = np.random.default_rng(seed=seed)
+    W = rng.random(size)
     return W
 
 
@@ -107,6 +107,7 @@ if __name__ == '__main__':
     seed = random.seed(1)
     n = int(area*(sizeC[0]//(2**decompositionLvl))*(sizeC[1]//(2**decompositionLvl)))
     W = generateW(n, 1)
+    print(W)
 
     F = DVTwithLvlDecomposition(C, decompositionLvl)  # получили спектр
     # встроили знак в спектр

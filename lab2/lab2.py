@@ -1,6 +1,7 @@
 import copy
 import random
 import numpy as np
+import skimage.metrics
 from skimage.io import imsave, imshow, show, imread
 from matplotlib import pyplot as plt
 
@@ -155,10 +156,16 @@ if __name__ == '__main__':
 
     #2
     F = DVTwithLvlDecomposition(C, decompositionLvl)  # получили спектр
+    CC = invDVTwithLvlDecomposition(F, decompositionLvl)
     #3
+    bestA = 0
     alpha = 0.05
-    ro = 0.0
-    while ro <= 0.9:
+    ro = 0
+    r = 0
+    psnrMin = 1000
+    psnr = 0
+    for i in range(20):
+    # while ro <= 0.9:
         Fw = insertW(F, decompositionLvl, W, alpha)  # встроили знак в спектр
         #4
         CW = invDVTwithLvlDecomposition(Fw, decompositionLvl)  # получили изображение со встроенным знаком
@@ -169,8 +176,14 @@ if __name__ == '__main__':
         #6
         newW = rateW(newFw, F, alpha, decompositionLvl)
         ro = detector(W, newW)  #???
-        print(f"p: {ro}\ta: {alpha}")
+        psnr = skimage.metrics.peak_signal_noise_ratio(C, savedCW)
+        if (ro > 0.9) & (psnr < psnrMin):
+            bestA = alpha
+            psnrMin = psnr
+            r = ro
+            print(f"i: {i}\tp: {r}\tpsnr: {psnr}\ta: {alpha}")
         alpha += 0.05
+    print(f"p: {r}\tpsnr: {psnr}\tbest a: {bestA}")
 
     #8
 

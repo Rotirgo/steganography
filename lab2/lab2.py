@@ -13,14 +13,14 @@ def generateW(size, seed):
     return w
 
 
-def insertW(f, Lvl, w):
+def insertW(f, Lvl, w, alpha):
     sizef = np.shape(f)
     partf = f[sizef[0]//(2**Lvl):sizef[0]//(2**(Lvl-1)), 0:sizef[1]//(2**Lvl)]
     sizePartf = np.shape(partf)
     fmean = np.mean(partf)
     smallfw = copy.copy(partf)
     for i in range(0, len(w)):
-        smallfw[i//sizePartf[0], i%sizePartf[0]] = fmean + (partf[i//sizePartf[0], i%sizePartf[0]] - fmean)*(1+0.5*w[i])
+        smallfw[i//sizePartf[1], i%sizePartf[1]] = fmean + (partf[i//sizePartf[1], i%sizePartf[1]] - fmean)*(1+alpha*w[i])
     fw = copy.copy(f)
     fw[sizef[0]//(2**Lvl):sizef[0]//(2**(Lvl-1)), 0:sizef[1]//(2**Lvl)] = smallfw
     return fw
@@ -76,6 +76,44 @@ def invDVTwithLvlDecomposition(img, Lvl):
         ResF[0:size[0] // (2 ** (Lvl - i - 1)), 0:size[1] // (2 ** (Lvl - i - 1))] = invVeyvletHaara(partF)
     return ResF
 
+
+def rateW(fw, f, alpha, Lvl):
+    sizef = np.shape(f)
+    partfw = fw[sizef[0]//(2**Lvl):sizef[0]//(2**(Lvl-1)), 0:sizef[1]//(2**Lvl)]
+    partf = f[sizef[0]//(2 ** Lvl):sizef[0]//(2 ** (Lvl - 1)), 0:sizef[1]//(2 ** Lvl)]
+
+    sizePartf = np.shape(partf)
+    fmean = np.mean(partf)
+    w = []
+    # fig0 = plt.figure(figsize=(20, 10))
+    # fig0.add_subplot(1, 2, 1)
+    # imshow(partf, cmap="gray")
+    # fig0.add_subplot(1, 2, 2)
+    # imshow(partfw, cmap="gray")
+    for i in range(0, 1024): #sizePartf[0]*sizePartf[1]
+        # print(type((partfw[i//sizePartf[1], i%sizePartf[1]] - partf[i//sizePartf[1], i%sizePartf[1]]) /
+        #          (alpha*(partf[i//sizePartf[1], i%sizePartf[1]]-fmean))))
+        # print(f"({partfw[i//sizePartf[1], i%sizePartf[1]]} - {partf[i//sizePartf[1], i%sizePartf[1]]})/({alpha}*({partf[i//sizePartf[1], i%sizePartf[1]]}-{fmean}))")
+        w.append((partfw[i//sizePartf[1], i%sizePartf[1]] - partf[i//sizePartf[1], i%sizePartf[1]]) /
+                 (alpha*(partf[i//sizePartf[1], i%sizePartf[1]]-fmean)))
+    return w
+
+
+def detector(w, wnew):
+    w_ = wnew[0:len(w)]
+    # for i in range(0, len(w)):
+    #     print(f"{i}\tw: {w[i]}\tw~: {w_[i]}")
+    sum = 0
+    for i in range(0, len(w)):
+        sum += w[i]*w_[i]
+    sum1 = np.sum(np.square(w_))
+    sum2 = np.sum(np.square(w))
+    print(sum, sum2, sum1)
+    delimiter = np.sum(np.square(w_)) * np.sum(np.square(w))
+    p = sum/np.sqrt(delimiter)
+    return p
+
+
 # для визуального восприятия спектра
 def contrastDecomposition(img):
     size = np.shape(img)
@@ -105,16 +143,16 @@ def contrastF(img, Lvl):
 
 def linary(img, fmin, fmax):
     if img < fmin:
-        img = 0
+        img = 0.0
     elif img > fmax:
-        img = 255
+        img = 255.0
     else:
         img = 255*(img - fmin)/(fmax-fmin)
     return img
 
 
 if __name__ == '__main__':
-    C = imread("C:/Users/Никита/Desktop/стеганография/лаба2/bridge.tif")
+    C = imread("C:/Users/Никита/Desktop/стеганография/лаба2/bridge.tif").astype(int)
     #1
     sizeC = np.shape(C)
     n = int(area*(sizeC[0]//(2**decompositionLvl))*(sizeC[1]//(2**decompositionLvl)))
@@ -123,38 +161,52 @@ if __name__ == '__main__':
     #2
     F = DVTwithLvlDecomposition(C, decompositionLvl)  # получили спектр
     #3
-    Fw = insertW(F, decompositionLvl, W)  # встроили знак в спектр
+    Fw = insertW(F, decompositionLvl, W, 0.5)  # встроили знак в спектр
     #4
     CW = invDVTwithLvlDecomposition(Fw, decompositionLvl)  # получили изображение со встроенным знаком
+    imsave("CW.png", CW)
     #5
-    Fcw = DVTwithLvlDecomposition(CW, decompositionLvl)
-    #6
+    saveCW = imread("CW.png")
+    newFw = DVTwithLvlDecomposition(saveCW, decompositionLvl)
 
+    viewnewFw = contrastF((F-newFw), decompositionLvl)
+    fig0 = plt.figure(figsize=(20, 10))
+    fig0.add_subplot(1, 1, 1)
+    imshow((viewnewFw), cmap="gray")
+
+    #6
+    a = 0.5
+    newW = rateW(newFw, F, a, decompositionLvl)
+    ro = detector(W, newW)  #??? не считается правильно
+    # while ro <= 0.9:
+    #     a *= 2
+    #     newW = rateW(newFw, F, a, decompositionLvl)
+    #     ro = detector(W, newW)
+    #     print(f"p: {ro}\ta: {a}")
+    print(f"p: {ro}\ta: {a}")
     #7
 
     #8
 
 
-
-
     # вывод изображений
-    viewF = contrastF(F, decompositionLvl)
-    fig = plt.figure(figsize=(20, 10))
-    fig.add_subplot(1, 2, 1)
-    imshow(C)
-    fig.add_subplot(1, 2, 2)
-    imshow(viewF, cmap="gray")
-
-    fig2 = plt.figure(figsize=(20, 10))
-    fig2.add_subplot(1, 2, 1)
-    imshow(C.astype(float), cmap="gray")
-    fig2.add_subplot(1, 2, 2)
-    imshow(CW, cmap="gray")
-
-    fig3 = plt.figure(figsize=(20, 10))
-    fig3.add_subplot(1, 2, 1)
-    imshow((C - CW), cmap="gray")
-    fig3.add_subplot(1, 2, 2)
-    imshow((Fw-Fcw), cmap="gray")
-    print(np.sum(np.square(C-CW)))
-    show()
+    # viewF = contrastF(F, decompositionLvl)
+    # fig = plt.figure(figsize=(20, 10))
+    # fig.add_subplot(1, 2, 1)
+    # imshow(C, cmap="gray")
+    # fig.add_subplot(1, 2, 2)
+    # imshow(viewF, cmap="gray")
+    #
+    # fig2 = plt.figure(figsize=(20, 10))
+    # fig2.add_subplot(1, 2, 1)
+    # imshow(C, cmap="gray")
+    # fig2.add_subplot(1, 2, 2)
+    # imshow(saveCW, cmap="gray")
+    #
+    # fig3 = plt.figure(figsize=(20, 10))
+    # fig3.add_subplot(1, 2, 1)
+    # imshow((C - CW).astype(float), cmap="gray")
+    # fig3.add_subplot(1, 2, 2)
+    # imshow((Fw-newFw), cmap="gray")
+    # print(np.average(np.abs(W-newW)))
+    # show()

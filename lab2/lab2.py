@@ -85,15 +85,7 @@ def rateW(fw, f, alpha, Lvl):
     sizePartf = np.shape(partf)
     fmean = np.mean(partf)
     w = []
-    # fig0 = plt.figure(figsize=(20, 10))
-    # fig0.add_subplot(1, 2, 1)
-    # imshow(partf, cmap="gray")
-    # fig0.add_subplot(1, 2, 2)
-    # imshow(partfw, cmap="gray")
-    for i in range(0, 1024): #sizePartf[0]*sizePartf[1]
-        # print(type((partfw[i//sizePartf[1], i%sizePartf[1]] - partf[i//sizePartf[1], i%sizePartf[1]]) /
-        #          (alpha*(partf[i//sizePartf[1], i%sizePartf[1]]-fmean))))
-        # print(f"({partfw[i//sizePartf[1], i%sizePartf[1]]} - {partf[i//sizePartf[1], i%sizePartf[1]]})/({alpha}*({partf[i//sizePartf[1], i%sizePartf[1]]}-{fmean}))")
+    for i in range(0, sizePartf[0]*sizePartf[1]):  #
         w.append((partfw[i//sizePartf[1], i%sizePartf[1]] - partf[i//sizePartf[1], i%sizePartf[1]]) /
                  (alpha*(partf[i//sizePartf[1], i%sizePartf[1]]-fmean)))
     return w
@@ -101,8 +93,8 @@ def rateW(fw, f, alpha, Lvl):
 
 def detector(w, wnew):
     w_ = wnew[0:len(w)]
-    # for i in range(0, len(w)):
-    #     print(f"{i}\tw: {w[i]}\tw~: {w_[i]}")
+    # print(w)
+    # print(w_)
     sum = 0
     for i in range(0, len(w)):
         sum += w[i]*w_[i]
@@ -118,13 +110,16 @@ def detector(w, wnew):
 def contrastDecomposition(img):
     size = np.shape(img)
     contrast = copy.copy(img)
+    LL = copy.copy(np.abs(contrast[0:size[0] // 2, 0:size[1]//2]))
     LH = copy.copy(np.abs(contrast[0:size[0]//2, size[1]//2:]))
     HL = copy.copy(np.abs(contrast[size[0]//2:, 0:size[1]//2]))
     HH = copy.copy(np.abs(contrast[size[0]//2:, size[1]//2:]))
     lin = np.vectorize(linary)
+    contrastLL = lin(LL, np.min(LL), np.max(LL))
     contrastLH = lin(LH, np.min(LH), np.max(LH))
     contrastHL = lin(HL, np.min(HL), np.max(HL))
     contrastHH = lin(HH, np.min(HH), np.max(HH))
+    contrast[0:size[0] // 2, 0:size[1]//2] = contrastLL
     contrast[0:size[0]//2, size[1]//2:] = contrastLH
     contrast[size[0]//2:, 0:size[1]//2] = contrastHL
     contrast[size[0]//2:, size[1]//2:] = contrastHH
@@ -161,52 +156,46 @@ if __name__ == '__main__':
     #2
     F = DVTwithLvlDecomposition(C, decompositionLvl)  # получили спектр
     #3
-    Fw = insertW(F, decompositionLvl, W, 0.5)  # встроили знак в спектр
-    #4
-    CW = invDVTwithLvlDecomposition(Fw, decompositionLvl)  # получили изображение со встроенным знаком
-    imsave("CW.png", CW)
-    #5
-    saveCW = imread("CW.png")
-    newFw = DVTwithLvlDecomposition(saveCW, decompositionLvl)
-
-    viewnewFw = contrastF((F-newFw), decompositionLvl)
-    fig0 = plt.figure(figsize=(20, 10))
-    fig0.add_subplot(1, 1, 1)
-    imshow((viewnewFw), cmap="gray")
-
-    #6
-    a = 0.5
-    newW = rateW(newFw, F, a, decompositionLvl)
-    ro = detector(W, newW)  #??? не считается правильно
-    # while ro <= 0.9:
-    #     a *= 2
-    #     newW = rateW(newFw, F, a, decompositionLvl)
-    #     ro = detector(W, newW)
-    #     print(f"p: {ro}\ta: {a}")
-    print(f"p: {ro}\ta: {a}")
-    #7
+    alpha = 0.05
+    ro = 0.0
+    while ro <= 0.9:
+        Fw = insertW(F, decompositionLvl, W, alpha)  # встроили знак в спектр
+        #4
+        CW = invDVTwithLvlDecomposition(Fw, decompositionLvl)  # получили изображение со встроенным знаком
+        imsave("CW.png", CW)
+        #5
+        savedCW = imread("CW.png")
+        newFw = DVTwithLvlDecomposition(savedCW, decompositionLvl)
+        #6
+        newW = rateW(newFw, F, alpha, decompositionLvl)
+        ro = detector(W, newW)  #???
+        print(f"p: {ro}\ta: {alpha}")
+        alpha += 0.05
 
     #8
 
 
     # вывод изображений
-    # viewF = contrastF(F, decompositionLvl)
-    # fig = plt.figure(figsize=(20, 10))
-    # fig.add_subplot(1, 2, 1)
-    # imshow(C, cmap="gray")
-    # fig.add_subplot(1, 2, 2)
-    # imshow(viewF, cmap="gray")
-    #
-    # fig2 = plt.figure(figsize=(20, 10))
-    # fig2.add_subplot(1, 2, 1)
-    # imshow(C, cmap="gray")
-    # fig2.add_subplot(1, 2, 2)
-    # imshow(saveCW, cmap="gray")
-    #
-    # fig3 = plt.figure(figsize=(20, 10))
-    # fig3.add_subplot(1, 2, 1)
-    # imshow((C - CW).astype(float), cmap="gray")
-    # fig3.add_subplot(1, 2, 2)
-    # imshow((Fw-newFw), cmap="gray")
-    # print(np.average(np.abs(W-newW)))
-    # show()
+    viewF = contrastF(F, decompositionLvl)
+    fig = plt.figure(figsize=(20, 10))
+    fig.add_subplot(1, 2, 1)
+    imshow(C, cmap="gray")
+    fig.add_subplot(1, 2, 2)
+    imshow(viewF, cmap="gray")
+
+    fig2 = plt.figure(figsize=(20, 10))
+    fig2.add_subplot(1, 2, 1)
+    imshow(C, cmap="gray")
+    fig2.add_subplot(1, 2, 2)
+    imshow(savedCW.astype(float), cmap="gray")
+
+    lin = np.vectorize(linary)
+    difImg = lin((C - savedCW).astype(float), np.min((C - savedCW).astype(float)), np.max((C - savedCW).astype(float)))
+    difF = contrastF((Fw-newFw), decompositionLvl)
+    fig3 = plt.figure(figsize=(20, 10))
+    fig3.add_subplot(1, 2, 1)
+    imshow(difImg, cmap="gray")
+    fig3.add_subplot(1, 2, 2)
+    imshow(difF, cmap="gray")
+    print(np.average(np.abs(W-newW[0:len(W)])))
+    show()

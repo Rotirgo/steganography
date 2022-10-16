@@ -20,10 +20,35 @@ def insertW(f, Lvl, w, alpha):
     sizePartf = np.shape(partf)
     fmean = np.mean(partf)
     smallfw = copy.copy(partf)
-    for i in range(0, len(w)): # сделать проход от низких частот к высоким
-        smallfw[i//sizePartf[1], i%sizePartf[1]] = fmean + (partf[i//sizePartf[1], i%sizePartf[1]] - fmean)*(1+alpha*w[i])
+    cnt = 0
+    i = 0
+    d = np.abs(sizePartf[0] - sizePartf[1])
+    startd = np.abs(sizePartf[0] - sizePartf[1])
+    while i < len(w):
+        for j in range(0, cnt+1):
+            # print(i + j)
+            if i + j == len(w):
+                break
+            if d == startd:
+                smallfw[cnt-j, j] = fmean + (partf[cnt-j, j] - fmean)*(1+alpha*w[i+j])
+            else:
+                smallfw[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j] = \
+                    fmean+(partf[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j] - fmean) * (1 + alpha * w[i + j])
+        i += cnt+1
+        if (cnt < np.min(sizePartf) - 1) & (d >= 0):
+            cnt += 1
+        if (cnt == np.min(sizePartf) - 1) & (d != -1):
+            cnt = cnt
+            d -= 1
+        if d < 0:
+            cnt -= 1
     fw = copy.copy(f)
     fw[sizef[0]//(2**Lvl):sizef[0]//(2**(Lvl-1)), 0:sizef[1]//(2**Lvl)] = smallfw
+
+    # fig = plt.figure(figsize=(20, 10))
+    # fig.add_subplot(1, 1, 1)
+    # imshow(smallfw-partf, cmap="gray")
+    # show()
     return fw
 
 
@@ -82,7 +107,7 @@ def invDVTwithLvlDecomposition(img, Lvl):
     return ResF
 
 
-def rateW(fw, f, alpha, Lvl):
+def rateW(fw, f, alpha, Lvl, size):
     sizef = np.shape(f)
     partfw = fw[sizef[0]//(2**Lvl):sizef[0]//(2**(Lvl-1)), 0:sizef[1]//(2**Lvl)]
     partf = f[sizef[0]//(2 ** Lvl):sizef[0]//(2 ** (Lvl - 1)), 0:sizef[1]//(2 ** Lvl)]
@@ -90,16 +115,40 @@ def rateW(fw, f, alpha, Lvl):
     sizePartf = np.shape(partf)
     fmean = np.mean(partf)
     w = []
-    for i in range(0, sizePartf[0]*sizePartf[1]):  # сделать проход от низких частот к высоким
-        w.append((partfw[i//sizePartf[1], i%sizePartf[1]] - partf[i//sizePartf[1], i%sizePartf[1]]) /
-                 (alpha*(partf[i//sizePartf[1], i%sizePartf[1]]-fmean)))
+    cnt = 0
+    i = 0
+    d = np.abs(sizePartf[0] - sizePartf[1])
+    startd = np.abs(sizePartf[0] - sizePartf[1])
+    while len(w) < size:
+        # print(i, cnt)
+        for j in range(0, cnt + 1):
+            if len(w) == size:
+                break
+            if d == startd:
+                w.append((partfw[cnt - j, j] - partf[cnt - j, j]) / (alpha*(partf[cnt - j, j]-fmean)))
+                # print(f"w: {cnt - j};{j}")
+            else:
+                print(f"w_: {sizePartf[0]-1-j};{sizePartf[0]-1-cnt+j}")
+                w.append((partfw[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j] - partf[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j]) /
+                         (alpha*(partf[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j]-fmean)))
+        if (cnt < np.min(sizePartf) - 1) & (d >= 0):
+            cnt += 1
+        if (cnt == np.min(sizePartf) - 1) & (d != -1):
+            cnt = cnt
+            d -= 1
+        if d < 0:
+            cnt -= 1
+    print(f"len: {len(w)}")
+    # for i in range(0, sizePartf[0]*sizePartf[1]):  # сделать проход от низких частот к высоким
+    #     w.append((partfw[i//sizePartf[1], i%sizePartf[1]] - partf[i//sizePartf[1], i%sizePartf[1]]) /
+    #              (alpha*(partf[i//sizePartf[1], i%sizePartf[1]]-fmean)))
     return w
 
 
 def detector(w, wnew):
     w_ = wnew[0:len(w)]
-    # print(w)
-    # print(w_)
+    print(w)
+    print(w_)
     sum = 0
     for i in range(0, len(w)):
         sum += w[i]*w_[i]
@@ -172,7 +221,7 @@ if __name__ == '__main__':
     # while ro <= 0.9:
     # можно находить пеовый ро > 0.9 потому что при росте а сигнал/шум падпет,
     # значит при первом таком появлении psnr будет максимален, а искажения минимальны
-    for i in range(200):
+    for i in range(1):
         Fw = insertW(F, decompositionLvl, W, alpha)  # встроили знак в спектр
         #4
         CW = invDVTwithLvlDecomposition(Fw, decompositionLvl)  # получили изображение со встроенным знаком
@@ -182,7 +231,7 @@ if __name__ == '__main__':
         savedCW = imread("CW.png")
         newFw = DVTwithLvlDecomposition(savedCW, decompositionLvl)
         #6
-        newW = rateW(newFw, F, alpha, decompositionLvl)
+        newW = rateW(newFw, F, alpha, decompositionLvl, n)
         ro = detector(W, newW)
         psnr = skimage.metrics.peak_signal_noise_ratio(C, savedCW)
         if (ro > 0.9) & (psnr > psnrMax):
@@ -190,8 +239,8 @@ if __name__ == '__main__':
             psnrMax = psnr
             roOfBest = ro
             print(f"i: {i}\tp: {ro}\tpsnr: {psnr}\ta: {alpha}")
-        # print(ro)
-        alpha += 0.01
+        print(ro)
+        alpha += 0.05
     print(f"p: {roOfBest}\tpsnr: {psnrMax}\tbest a: {bestA}")
 
     #8

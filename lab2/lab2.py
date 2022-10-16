@@ -20,7 +20,7 @@ def insertW(f, Lvl, w, alpha):
     sizePartf = np.shape(partf)
     fmean = np.mean(partf)
     smallfw = copy.copy(partf)
-    for i in range(0, len(w)):
+    for i in range(0, len(w)): # сделать проход от низких частот к высоким
         smallfw[i//sizePartf[1], i%sizePartf[1]] = fmean + (partf[i//sizePartf[1], i%sizePartf[1]] - fmean)*(1+alpha*w[i])
     fw = copy.copy(f)
     fw[sizef[0]//(2**Lvl):sizef[0]//(2**(Lvl-1)), 0:sizef[1]//(2**Lvl)] = smallfw
@@ -90,7 +90,7 @@ def rateW(fw, f, alpha, Lvl):
     sizePartf = np.shape(partf)
     fmean = np.mean(partf)
     w = []
-    for i in range(0, sizePartf[0]*sizePartf[1]):  #
+    for i in range(0, sizePartf[0]*sizePartf[1]):  # сделать проход от низких частот к высоким
         w.append((partfw[i//sizePartf[1], i%sizePartf[1]] - partf[i//sizePartf[1], i%sizePartf[1]]) /
                  (alpha*(partf[i//sizePartf[1], i%sizePartf[1]]-fmean)))
     return w
@@ -160,8 +160,8 @@ if __name__ == '__main__':
 
     #2
     F = DVTwithLvlDecomposition(C, decompositionLvl)  # получили спектр
-    CC = invDVTwithLvlDecomposition(F, decompositionLvl)
-    print(np.average(np.abs(C-CC)))
+    # CC = invDVTwithLvlDecomposition(F, decompositionLvl)
+    # print(np.average(np.abs(C-CC)))
     #3
     bestA = 0
     alpha = 0.05
@@ -176,19 +176,21 @@ if __name__ == '__main__':
         Fw = insertW(F, decompositionLvl, W, alpha)  # встроили знак в спектр
         #4
         CW = invDVTwithLvlDecomposition(Fw, decompositionLvl)  # получили изображение со встроенным знаком
-        imsave("CW.png", CW)
+        imsave("CW.png", CW)    # сохраняя в файл картинка записывается в файл не идентичная,
+                                # поэтому при разности CW и savedCW в области без цвз тоже есть отличия
         #5
         savedCW = imread("CW.png")
         newFw = DVTwithLvlDecomposition(savedCW, decompositionLvl)
         #6
         newW = rateW(newFw, F, alpha, decompositionLvl)
-        ro = detector(W, newW)  #???
+        ro = detector(W, newW)
         psnr = skimage.metrics.peak_signal_noise_ratio(C, savedCW)
         if (ro > 0.9) & (psnr > psnrMax):
             bestA = alpha
             psnrMax = psnr
             roOfBest = ro
             print(f"i: {i}\tp: {ro}\tpsnr: {psnr}\ta: {alpha}")
+        # print(ro)
         alpha += 0.01
     print(f"p: {roOfBest}\tpsnr: {psnrMax}\tbest a: {bestA}")
 
@@ -208,13 +210,13 @@ if __name__ == '__main__':
     imshow(C, cmap="gray")
     fig2.add_subplot(1, 2, 2)
     imshow(savedCW.astype(float), cmap="gray")
+    print(np.average(np.abs(CW - savedCW)))
 
     lin = np.vectorize(linary)
-    difImg = lin((C - savedCW).astype(float), np.min((C - savedCW).astype(float)), np.max((C - savedCW).astype(float)))
     difF = contrastF((Fw-newFw), decompositionLvl)
     fig3 = plt.figure(figsize=(20, 10))
     fig3.add_subplot(1, 2, 1)
-    imshow(difImg, cmap="gray")
+    imshow(C - savedCW, cmap="gray")
     fig3.add_subplot(1, 2, 2)
     imshow(difF, cmap="gray")
     print(np.average(np.abs(W-newW[0:len(W)])))

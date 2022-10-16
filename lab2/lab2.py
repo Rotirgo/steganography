@@ -25,8 +25,8 @@ def insertW(f, Lvl, w, alpha):
     d = np.abs(sizePartf[0] - sizePartf[1])
     startd = np.abs(sizePartf[0] - sizePartf[1])
     while i < len(w):
+        # print(i, cnt)
         for j in range(0, cnt+1):
-            # print(i + j)
             if i + j == len(w):
                 break
             if d == startd:
@@ -126,9 +126,8 @@ def rateW(fw, f, alpha, Lvl, size):
                 break
             if d == startd:
                 w.append((partfw[cnt - j, j] - partf[cnt - j, j]) / (alpha*(partf[cnt - j, j]-fmean)))
-                # print(f"w: {cnt - j};{j}")
+                # print(f"w: {w[i+j]}")
             else:
-                print(f"w_: {sizePartf[0]-1-j};{sizePartf[0]-1-cnt+j}")
                 w.append((partfw[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j] - partf[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j]) /
                          (alpha*(partf[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j]-fmean)))
         if (cnt < np.min(sizePartf) - 1) & (d >= 0):
@@ -138,7 +137,7 @@ def rateW(fw, f, alpha, Lvl, size):
             d -= 1
         if d < 0:
             cnt -= 1
-    print(f"len: {len(w)}")
+
     # for i in range(0, sizePartf[0]*sizePartf[1]):  # сделать проход от низких частот к высоким
     #     w.append((partfw[i//sizePartf[1], i%sizePartf[1]] - partf[i//sizePartf[1], i%sizePartf[1]]) /
     #              (alpha*(partf[i//sizePartf[1], i%sizePartf[1]]-fmean)))
@@ -154,7 +153,7 @@ def detector(w, wnew):
         sum += w[i]*w_[i]
     sum1 = np.sum(np.square(w_))
     sum2 = np.sum(np.square(w))
-    # print(sum, sum2, sum1)
+    print(sum, sum2, sum1)
     delimiter = np.sum(np.square(w_)) * np.sum(np.square(w))
     p = sum/np.sqrt(delimiter)
     return p
@@ -221,7 +220,7 @@ if __name__ == '__main__':
     # while ro <= 0.9:
     # можно находить пеовый ро > 0.9 потому что при росте а сигнал/шум падпет,
     # значит при первом таком появлении psnr будет максимален, а искажения минимальны
-    for i in range(1):
+    for i in range(20):
         Fw = insertW(F, decompositionLvl, W, alpha)  # встроили знак в спектр
         #4
         CW = invDVTwithLvlDecomposition(Fw, decompositionLvl)  # получили изображение со встроенным знаком
@@ -239,7 +238,7 @@ if __name__ == '__main__':
             psnrMax = psnr
             roOfBest = ro
             print(f"i: {i}\tp: {ro}\tpsnr: {psnr}\ta: {alpha}")
-        print(ro)
+        # print(ro)
         alpha += 0.05
     print(f"p: {roOfBest}\tpsnr: {psnrMax}\tbest a: {bestA}")
 
@@ -268,5 +267,5 @@ if __name__ == '__main__':
     imshow(C - savedCW, cmap="gray")
     fig3.add_subplot(1, 2, 2)
     imshow(difF, cmap="gray")
-    print(np.average(np.abs(W-newW[0:len(W)])))
+    print(np.average(np.abs(W-newW)))
     show()

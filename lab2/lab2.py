@@ -29,41 +29,45 @@ def insertW(f, Lvl, w, alpha):
 
 def VeyvletHaara(img):
     size = np.shape(img)
-    fHorizont = np.zeros_like(img).astype(float)
-    fVert = np.zeros_like(img).astype(float)
-    for i in range(0, size[0]):
-        for j in range(0, size[1], 2):
-            fHorizont[i][j//2] = 0.5*img[i][j] + 0.5*img[i][j+1]
-            fHorizont[i][(j // 2)+(size[1]//2)] = 0.5*img[i][j] - 0.5*img[i][j + 1]
 
-    for i in range(0, size[0], 2):
-        for j in range(0, size[1]):
-            fVert[i//2][j] = 0.5*fHorizont[i][j] + 0.5*fHorizont[i+1][j]
-            fVert[(i//2)+(size[0]//2)][j] = 0.5*fHorizont[i][j] - 0.5*fHorizont[i+1][j]
-    return fVert
+    fHorizont = np.reshape(img, ((size[0]*size[1]//2), 2))
+    L = np.sum(fHorizont, axis=1)/2
+    tmp = fHorizont * ([[1.0, -1.0]]*np.ones_like(fHorizont))
+    H = np.sum(tmp, axis=1)/2
+    L = np.reshape(L, (size[0], size[1]//2))
+    H = np.reshape(H, (size[0], size[1] // 2))
+    fHorizont = np.concatenate((L, H), axis=1)
+
+    fVert = np.reshape(np.transpose(fHorizont), ((size[0] * size[1] // 2), 2))
+    L = np.sum(fVert, axis=1) / 2
+    tmp = fVert * ([[1.0, -1.0]] * np.ones_like(fVert))
+    H = np.sum(tmp, axis=1) / 2
+    L = np.reshape(L, (size[0], size[1] // 2))
+    H = np.reshape(H, (size[0], size[1] // 2))
+    return np.transpose(np.concatenate((L, H), axis=1))
 
 
 def invVeyvletHaara(img):
     size = np.shape(img)
-    fHorizont = np.zeros_like(img).astype(float)
+    resImg = copy.copy(img)
+
     fVert = np.zeros_like(img).astype(float)
     for i in range(0, size[0]//2):
-        for j in range(0, size[1]):
-            fVert[2*i][j] = img[i][j] + img[i+(size[0]//2)][j]
-            fVert[2*i+1][j] = img[i][j] - img[i+(size[0]//2)][j]
+        fVert[2*i] = img[i] + img[i+(size[0]//2)]
+        fVert[2*i+1] = img[i] - img[i+(size[0]//2)]
 
-    for i in range(0, size[0]):
-        for j in range(0, size[1]//2):
-            fHorizont[i][2*j] = fVert[i][j] + fVert[i][j+(size[1]//2)]
-            fHorizont[i][2*j+1] = fVert[i][j] - fVert[i][j+(size[1]//2)]
-    return fHorizont
+    fHorizont = np.transpose(fVert)
+    for i in range(0, size[0]//2):
+        resImg[2 * i] = fHorizont[i] + fHorizont[i + (size[0] // 2)]
+        resImg[2 * i + 1] = fHorizont[i] - fHorizont[i + (size[0] // 2)]
+    return np.transpose(resImg)
 
 
-def DVTwithLvlDecomposition(img, decompositionLvl):
+def DVTwithLvlDecomposition(img, Lvl):
     size = np.shape(img)
     ResF = VeyvletHaara(img)
     partF = ResF[0:size[0]//2, 0:size[1]//2]
-    for i in range(1, decompositionLvl):
+    for i in range(1, Lvl):
         ResF[0:(size[0]//(2**i)), 0:(size[1]//(2**i))] = VeyvletHaara(partF)
         partF = ResF[0:(size[0]//(2*2**i)), 0:(size[1]//(2*2**i))]
     return ResF
@@ -101,7 +105,7 @@ def detector(w, wnew):
         sum += w[i]*w_[i]
     sum1 = np.sum(np.square(w_))
     sum2 = np.sum(np.square(w))
-    print(sum, sum2, sum1)
+    # print(sum, sum2, sum1)
     delimiter = np.sum(np.square(w_)) * np.sum(np.square(w))
     p = sum/np.sqrt(delimiter)
     return p
@@ -157,15 +161,18 @@ if __name__ == '__main__':
     #2
     F = DVTwithLvlDecomposition(C, decompositionLvl)  # получили спектр
     CC = invDVTwithLvlDecomposition(F, decompositionLvl)
+    print(np.average(np.abs(C-CC)))
     #3
     bestA = 0
     alpha = 0.05
     ro = 0
-    r = 0
-    psnrMin = 1000
+    roOfBest = 0
+    psnrMax = 1
     psnr = 0
-    for i in range(20):
     # while ro <= 0.9:
+    # можно находить пеовый ро > 0.9 потому что при росте а сигнал/шум падпет,
+    # значит при первом таком появлении psnr будет максимален, а искажения минимальны
+    for i in range(200):
         Fw = insertW(F, decompositionLvl, W, alpha)  # встроили знак в спектр
         #4
         CW = invDVTwithLvlDecomposition(Fw, decompositionLvl)  # получили изображение со встроенным знаком
@@ -177,13 +184,13 @@ if __name__ == '__main__':
         newW = rateW(newFw, F, alpha, decompositionLvl)
         ro = detector(W, newW)  #???
         psnr = skimage.metrics.peak_signal_noise_ratio(C, savedCW)
-        if (ro > 0.9) & (psnr < psnrMin):
+        if (ro > 0.9) & (psnr > psnrMax):
             bestA = alpha
-            psnrMin = psnr
-            r = ro
-            print(f"i: {i}\tp: {r}\tpsnr: {psnr}\ta: {alpha}")
-        alpha += 0.05
-    print(f"p: {r}\tpsnr: {psnr}\tbest a: {bestA}")
+            psnrMax = psnr
+            roOfBest = ro
+            print(f"i: {i}\tp: {ro}\tpsnr: {psnr}\ta: {alpha}")
+        alpha += 0.01
+    print(f"p: {roOfBest}\tpsnr: {psnrMax}\tbest a: {bestA}")
 
     #8
 

@@ -20,28 +20,33 @@ def insertW(f, Lvl, w, alpha):
     sizePartf = np.shape(partf)
     fmean = np.mean(partf)
     smallfw = copy.copy(partf)
-    cnt = 0
-    i = 0
-    d = np.abs(sizePartf[0] - sizePartf[1])
-    startd = np.abs(sizePartf[0] - sizePartf[1])
-    while i < len(w):
-        # print(i, cnt)
-        for j in range(0, cnt+1):
-            if i + j == len(w):
-                break
-            if d == startd:
-                smallfw[cnt-j, j] = fmean + (partf[cnt-j, j] - fmean)*(1+alpha*w[i+j])
-            else:
-                smallfw[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j] = \
-                    fmean+(partf[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j] - fmean) * (1 + alpha * w[i + j])
-        i += cnt+1
-        if (cnt < np.min(sizePartf) - 1) & (d >= 0):
-            cnt += 1
-        if (cnt == np.min(sizePartf) - 1) & (d != -1):
-            cnt = cnt
-            d -= 1
-        if d < 0:
-            cnt -= 1
+
+    # диагональный проход
+    # cnt = 0
+    # i = 0
+    # d = np.abs(sizePartf[0] - sizePartf[1])
+    # startd = np.abs(sizePartf[0] - sizePartf[1])
+    # while i < len(w):
+    #     # print(i, cnt)
+    #     for j in range(0, cnt+1):
+    #         if i + j == len(w):
+    #             break
+    #         if d == startd:
+    #             smallfw[cnt-j, j] = fmean + (partf[cnt-j, j] - fmean)*(1+alpha*w[i+j])
+    #         else:
+    #             smallfw[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j] = \
+    #                 fmean+(partf[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j] - fmean) * (1 + alpha * w[i + j])
+    #     i += cnt+1
+    #     if (cnt < np.min(sizePartf) - 1) & (d >= 0):
+    #         cnt += 1
+    #     if (cnt == np.min(sizePartf) - 1) & (d != -1):
+    #         cnt = cnt
+    #         d -= 1
+    #     if d < 0:
+    #         cnt -= 1
+    for i in range(0, len(w)):
+        smallfw[i//sizePartf[1], i%sizePartf[1]] = \
+            fmean + (partf[i//sizePartf[1], i%sizePartf[1]] - fmean)*(1+alpha*w[i])
     fw = copy.copy(f)
     fw[sizef[0]//(2**Lvl):sizef[0]//(2**(Lvl-1)), 0:sizef[1]//(2**Lvl)] = smallfw
 
@@ -115,32 +120,34 @@ def rateW(fw, f, alpha, Lvl, size):
     sizePartf = np.shape(partf)
     fmean = np.mean(partf)
     w = []
-    cnt = 0
-    i = 0
-    d = np.abs(sizePartf[0] - sizePartf[1])
-    startd = np.abs(sizePartf[0] - sizePartf[1])
-    while len(w) < size:
-        # print(i, cnt)
-        for j in range(0, cnt + 1):
-            if len(w) == size:
-                break
-            if d == startd:
-                w.append((partfw[cnt - j, j] - partf[cnt - j, j]) / (alpha*(partf[cnt - j, j]-fmean)))
-                # print(f"w: {w[i+j]}")
-            else:
-                w.append((partfw[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j] - partf[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j]) /
-                         (alpha*(partf[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j]-fmean)))
-        if (cnt < np.min(sizePartf) - 1) & (d >= 0):
-            cnt += 1
-        if (cnt == np.min(sizePartf) - 1) & (d != -1):
-            cnt = cnt
-            d -= 1
-        if d < 0:
-            cnt -= 1
 
-    # for i in range(0, sizePartf[0]*sizePartf[1]):  # сделать проход от низких частот к высоким
-    #     w.append((partfw[i//sizePartf[1], i%sizePartf[1]] - partf[i//sizePartf[1], i%sizePartf[1]]) /
-    #              (alpha*(partf[i//sizePartf[1], i%sizePartf[1]]-fmean)))
+    # диагональный проход
+    # cnt = 0
+    # i = 0
+    # d = np.abs(sizePartf[0] - sizePartf[1])
+    # startd = np.abs(sizePartf[0] - sizePartf[1])
+    # while len(w) < size:
+    #     # print(i, cnt)
+    #     for j in range(0, cnt + 1):
+    #         if len(w) == size:
+    #             break
+    #         if d == startd:
+    #             w.append((partfw[cnt - j, j] - partf[cnt - j, j]) / (alpha*(partf[cnt - j, j]-fmean)))
+    #             # print(f"w: {w[i+j]}")
+    #         else:
+    #             w.append((partfw[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j] - partf[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j]) /
+    #                      (alpha*(partf[sizePartf[0]-1-j, sizePartf[0]-1-cnt+j]-fmean)))
+    #     if (cnt < np.min(sizePartf) - 1) & (d >= 0):
+    #         cnt += 1
+    #     if (cnt == np.min(sizePartf) - 1) & (d != -1):
+    #         cnt = cnt
+    #         d -= 1
+    #     if d < 0:
+    #         cnt -= 1
+
+    for i in range(0, size):
+        w.append((partfw[i//sizePartf[1], i%sizePartf[1]] - partf[i//sizePartf[1], i%sizePartf[1]]) /
+                 (alpha*(partf[i//sizePartf[1], i%sizePartf[1]]-fmean)))
     return w
 
 

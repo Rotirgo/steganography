@@ -14,7 +14,7 @@ def generateW(size, seed):
     return w
 
 
-def insertW(f, Lvl, w, alpha):
+def insertW(f, Lvl, w, alpha, loc):
     sizef = np.shape(f)
     partf = f[sizef[0]//(2**Lvl):sizef[0]//(2**(Lvl-1)), 0:sizef[1]//(2**Lvl)]
     sizePartf = np.shape(partf)
@@ -45,15 +45,10 @@ def insertW(f, Lvl, w, alpha):
     #     if d < 0:
     #         cnt -= 1
     for i in range(0, len(w)):
-        smallfw[i//sizePartf[1], i%sizePartf[1]] = \
-            fmean + (partf[i//sizePartf[1], i%sizePartf[1]] - fmean)*(1+alpha*w[i])
+        smallfw[(i+loc*len(w))//sizePartf[1], (i+loc*len(w))%sizePartf[1]] = \
+            fmean + (partf[(i+loc*len(w))//sizePartf[1], (i+loc*len(w))%sizePartf[1]] - fmean)*(1+alpha*w[i])
     fw = copy.copy(f)
     fw[sizef[0]//(2**Lvl):sizef[0]//(2**(Lvl-1)), 0:sizef[1]//(2**Lvl)] = smallfw
-
-    # fig = plt.figure(figsize=(20, 10))
-    # fig.add_subplot(1, 1, 1)
-    # imshow(smallfw-partf, cmap="gray")
-    # show()
     return fw
 
 
@@ -109,16 +104,18 @@ def invDVTwithLvlDecomposition(img, Lvl):
     for i in range(0, Lvl):
         partF = ResF[0:size[0] // (2 ** (Lvl - i - 1)), 0:size[1] // (2 ** (Lvl - i - 1))]
         ResF[0:size[0] // (2 ** (Lvl - i - 1)), 0:size[1] // (2 ** (Lvl - i - 1))] = invVeyvletHaara(partF)
+    border = np.vectorize(borderPricessing)
+    ResF = border(ResF)
     return ResF
 
 
-def rateW(fw, f, alpha, Lvl, size):
+def rateW(fw, f, alpha, Lvl, size, loc):
     sizef = np.shape(f)
-    partfw = fw[sizef[0]//(2**Lvl):sizef[0]//(2**(Lvl-1)), 0:sizef[1]//(2**Lvl)]
-    partf = f[sizef[0]//(2 ** Lvl):sizef[0]//(2 ** (Lvl - 1)), 0:sizef[1]//(2 ** Lvl)]
+    partfw = fw[sizef[0]//(2**Lvl):sizef[0]//(2**(Lvl-1)), 0:sizef[1]//(2**Lvl)].astype(float)
+    partf = f[sizef[0]//(2 ** Lvl):sizef[0]//(2 ** (Lvl - 1)), 0:sizef[1]//(2 ** Lvl)].astype(float)
 
     sizePartf = np.shape(partf)
-    fmean = np.mean(partf)
+    fmean = float(np.mean(partf))
     w = []
 
     # диагональный проход
@@ -146,21 +143,22 @@ def rateW(fw, f, alpha, Lvl, size):
     #         cnt -= 1
 
     for i in range(0, size):
-        w.append((partfw[i//sizePartf[1], i%sizePartf[1]] - partf[i//sizePartf[1], i%sizePartf[1]]) /
-                 (alpha*(partf[i//sizePartf[1], i%sizePartf[1]]-fmean)))
+        w.append((partfw[(i+loc*size)//sizePartf[1], (i+loc*size)%sizePartf[1]]
+                  - partf[(i+loc*size)//sizePartf[1], (i+loc*size)%sizePartf[1]]) /
+                 (alpha*(partf[(i+loc*size)//sizePartf[1], (i+loc*size)%sizePartf[1]]-fmean)))
     return w
 
 
 def detector(w, wnew):
     w_ = wnew[0:len(w)]
-    print(w)
-    print(w_)
+    # print(w)
+    # print(w_)
     sum = 0
     for i in range(0, len(w)):
         sum += w[i]*w_[i]
     sum1 = np.sum(np.square(w_))
     sum2 = np.sum(np.square(w))
-    print(sum, sum2, sum1)
+    # print(sum, sum2, sum1)
     delimiter = np.sum(np.square(w_)) * np.sum(np.square(w))
     p = sum/np.sqrt(delimiter)
     return p
@@ -206,6 +204,14 @@ def linary(img, fmin, fmax):
     return img
 
 
+def borderPricessing(img):
+    if img < 0:
+        img = 0
+    elif img > 255:
+        img = 255
+    return img
+
+
 if __name__ == '__main__':
     C = imread("C:/Users/Никита/Desktop/стеганография/лаба2/bridge.tif").astype(int)
     #1
@@ -224,11 +230,11 @@ if __name__ == '__main__':
     roOfBest = 0
     psnrMax = 1
     psnr = 0
-    # while ro <= 0.9:
+    while ro <= 0.9:
     # можно находить пеовый ро > 0.9 потому что при росте а сигнал/шум падпет,
     # значит при первом таком появлении psnr будет максимален, а искажения минимальны
-    for i in range(20):
-        Fw = insertW(F, decompositionLvl, W, alpha)  # встроили знак в спектр
+    # for i in range(20):
+        Fw = insertW(F, decompositionLvl, W, alpha, 0)  # встроили знак в спектр
         #4
         CW = invDVTwithLvlDecomposition(Fw, decompositionLvl)  # получили изображение со встроенным знаком
         imsave("CW.png", CW)    # сохраняя в файл картинка записывается в файл не идентичная,
@@ -237,42 +243,57 @@ if __name__ == '__main__':
         savedCW = imread("CW.png")
         newFw = DVTwithLvlDecomposition(savedCW, decompositionLvl)
         #6
-        newW = rateW(newFw, F, alpha, decompositionLvl, n)
+        newW = rateW(newFw, F, alpha, decompositionLvl, n, 0)
         ro = detector(W, newW)
         psnr = skimage.metrics.peak_signal_noise_ratio(C, savedCW)
         if (ro > 0.9) & (psnr > psnrMax):
             bestA = alpha
             psnrMax = psnr
             roOfBest = ro
-            print(f"i: {i}\tp: {ro}\tpsnr: {psnr}\ta: {alpha}")
-        # print(ro)
-        alpha += 0.05
+            # print(f"i: {i}\tp: {ro}\tpsnr: {psnr}\ta: {alpha}")
+        print(f"p: {ro:.6f}\tpsnr: {psnr:.4f}\ta: {alpha:.2f}")
+        alpha += 0.01
     print(f"p: {roOfBest}\tpsnr: {psnrMax}\tbest a: {bestA}")
+    print(f"\n\n\n")
 
-    #8
-
-
-    # вывод изображений
     viewF = contrastF(F, decompositionLvl)
     fig = plt.figure(figsize=(20, 10))
     fig.add_subplot(1, 2, 1)
     imshow(C, cmap="gray")
     fig.add_subplot(1, 2, 2)
     imshow(viewF, cmap="gray")
-
-    fig2 = plt.figure(figsize=(20, 10))
-    fig2.add_subplot(1, 2, 1)
-    imshow(C, cmap="gray")
-    fig2.add_subplot(1, 2, 2)
-    imshow(savedCW.astype(float), cmap="gray")
-    print(np.average(np.abs(CW - savedCW)))
-
-    lin = np.vectorize(linary)
-    difF = contrastF((Fw-newFw), decompositionLvl)
-    fig3 = plt.figure(figsize=(20, 10))
-    fig3.add_subplot(1, 2, 1)
-    imshow(C - savedCW, cmap="gray")
-    fig3.add_subplot(1, 2, 2)
-    imshow(difF, cmap="gray")
-    print(np.average(np.abs(W-newW)))
     show()
+
+    #8
+    # получение данных при лучшем альфа
+    for i in range(0, 4):
+        Fw = insertW(F, decompositionLvl, W, bestA, i)
+        CW = invDVTwithLvlDecomposition(Fw, decompositionLvl)
+        imsave(f"CW{i+1}.png", CW)
+        savedCW = imread(f"CW{i+1}.png")
+        newFw = DVTwithLvlDecomposition(savedCW, decompositionLvl)
+        newW = rateW(newFw, F, bestA, decompositionLvl, n, i)
+        ro = detector(W, newW)
+        psnr = skimage.metrics.peak_signal_noise_ratio(C, savedCW)
+        print(f"{i+1}-я четверть:")
+        print(f"W: {W}")
+        print(f"W~: {newW}")
+        print(f"p: {ro}\tpsnr: {psnr}\ta: {bestA:.2f}")
+
+        # вывод изображений
+        fig2 = plt.figure(figsize=(20, 10))
+        fig2.add_subplot(1, 2, 1)
+        imshow(C, cmap="gray")
+        fig2.add_subplot(1, 2, 2)
+        imshow(savedCW.astype(float), cmap="gray")
+        # print(np.average(np.abs(CW - savedCW)))
+
+        lin = np.vectorize(linary)
+        difF = contrastF(np.abs(Fw-newFw), decompositionLvl)
+        fig3 = plt.figure(figsize=(20, 10))
+        fig3.add_subplot(1, 2, 1)
+        imshow(C - savedCW, cmap="gray")
+        fig3.add_subplot(1, 2, 2)
+        imshow((Fw-newFw), cmap="gray")
+        # print(np.average(np.abs(W-newW)))
+        show()

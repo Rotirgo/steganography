@@ -63,12 +63,19 @@ def VeyvletHaara(img):
     H = np.reshape(H, (size[0], size[1] // 2))
     fHorizont = np.concatenate((L, H), axis=1)
 
+
     fVert = np.reshape(np.transpose(fHorizont), ((size[0] * size[1] // 2), 2))
     L = np.sum(fVert, axis=1) / 2
     tmp = fVert * ([[1.0, -1.0]] * np.ones_like(fVert))
     H = np.sum(tmp, axis=1) / 2
     L = np.reshape(L, (size[0], size[1] // 2))
     H = np.reshape(H, (size[0], size[1] // 2))
+    # fig = plt.figure()
+    # fig.add_subplot(1, 2, 1)
+    # imshow(fHorizont, cmap="gray")
+    # fig.add_subplot(1, 2, 2)
+    # imshow(np.transpose(np.concatenate((L, H), axis=1)), cmap="gray")
+    # show()
     return np.transpose(np.concatenate((L, H), axis=1))
 
 
@@ -151,14 +158,7 @@ def rateW(fw, f, alpha, Lvl, size, loc):
 
 def detector(w, wnew):
     w_ = wnew[0:len(w)]
-    # print(w)
-    # print(w_)
-    sum = 0
-    for i in range(0, len(w)):
-        sum += w[i]*w_[i]
-    sum1 = np.sum(np.square(w_))
-    sum2 = np.sum(np.square(w))
-    # print(sum, sum2, sum1)
+    sum = np.sum(w*w_)
     delimiter = np.sum(np.square(w_)) * np.sum(np.square(w))
     p = sum/np.sqrt(delimiter)
     return p

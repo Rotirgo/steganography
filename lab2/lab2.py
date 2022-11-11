@@ -161,7 +161,7 @@ def detector(w, wnew):
     sum = np.sum(w*w_)
     delimiter = np.sum(np.square(w_)) * np.sum(np.square(w))
     p = sum/np.sqrt(delimiter)
-    return p
+    return np.abs(p)
 
 
 # для визуального восприятия спектра

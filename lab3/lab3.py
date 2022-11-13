@@ -62,7 +62,7 @@ def viewImgs(imgs, title, steps, *args):
 
 def printTable(table, coltype, rowtype):
     first_row = "\t\t\t|\t"
-    delimiter = "-"*9
+    delimiter = "-"*2
     for i in range(0, len(table)):
         first_row += f"s: {coltype[i]}\t|\t"
     delimiter += "-"*(len(first_row) - 1 + 4*len(table))
@@ -222,4 +222,4 @@ if __name__ == '__main__':
             roTable[list(firstDeform).index(QF), list(secondDeform).index(blur)] = ro
             psnr = skimage.metrics.peak_signal_noise_ratio(savedCW, deformImg)
 
-    printTable(roTable, jpeg, GaussBlur)
+    printTable(roTable, GaussBlur, jpeg)
